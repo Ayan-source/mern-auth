@@ -1,23 +1,26 @@
 const express = require('express');
 const app = express();
+const Authmodel = require('./models/authmodel');
+const authRoutes = require('./routes/authroutes');
 app.use(express.json());
 
-app.get('/', (req, res) => {
-  res.send('Hello, Worldjfkljsdkljf!');
+app.post('/register', async (req, res) => {
+    const {user,password} = req.body;
+    const newUser = await Authmodel.create({
+        user:user,
+        password:password
+    });
+    return res.status(201).json(
+        {
+            message: 'User registered successfully',
+            user: newUser
+        }
+    );
+})
+app.get('/users', async (req, res) => {
+    const users = await Authmodel.find();
+    return res.status(200).json(users);
 });
 
-app.post('/admin',(req,res) => {
-    const {user,password} = req.body;
-    res.status(201).json(
-        {
-            message:"hello from post123",
-            user,password
-        }
-    )
-})
-
-app.get('/admin',(req,res)=>{
-    res.send("hello from get")
-})
-
+app.use('/api/auth', authRoutes);
 module.exports = app;
