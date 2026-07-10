@@ -1,15 +1,30 @@
 const authmodel = require("../models/authmodel");
-
+const jwt = require("jsonwebtoken");
 const register = async(req,res) =>{
     const {user,password} = req.body;
+    const existingUser = await authmodel.findOne({user});
+    if(existingUser){
+        return res.status(400).json({
+            message:"User already exists"
+        })
+    }
+
     const newuser = await authmodel.create({
         user:user,
         password:password
     });
+
+    const token = jwt.sign({id: newuser._id},process.env.JWT_SECRET,{expiresIn:'30d'});
+    res.cookie('token',token,{
+        httpOnly:true,
+        secure:process.env.NODE_ENV === 'production',
+    });
+
+    
     return res.status(201).json(
         {
             message: 'User registered successfully',
-            user: newuser
+            user: newuser,
         }
     );
 }
