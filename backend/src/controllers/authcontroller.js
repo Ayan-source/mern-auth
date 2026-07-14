@@ -1,26 +1,27 @@
 const authmodel = require("../models/authmodel");
 const jwt = require("jsonwebtoken");
-const register = async(req,res) =>{
-    const {user,password} = req.body;
-    const existingUser = await authmodel.findOne({user});
-    if(existingUser){
+const bcrypt = require("bcrypt");
+const register = async (req, res) => {
+    const { user, password } = req.body;
+    const existingUser = await authmodel.findOne({ user });
+    if (existingUser) {
         return res.status(400).json({
-            message:"User already exists"
+            message: "User already exists"
         })
     }
-
+    const hashedPassword = await bcrypt.hash(password, 10);
     const newuser = await authmodel.create({
-        user:user,
-        password:password
+        user: user,
+        password: hashedPassword
     });
 
-    const token = jwt.sign({id: newuser._id},process.env.JWT_SECRET,{expiresIn:'30d'});
-    res.cookie('token',token,{
-        httpOnly:true,
-        secure:process.env.NODE_ENV === 'production',
+    const token = jwt.sign({ id: newuser._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
     });
 
-    
+
     return res.status(201).json(
         {
             message: 'User registered successfully',
@@ -28,61 +29,85 @@ const register = async(req,res) =>{
         }
     );
 }
-const getAllUsers = async(req,res) =>{
+const getAllUsers = async (req, res) => {
     const users = await authmodel.find();
     return res.status(200).json({
-        message:"All users fetched successfully",
+        message: "All users fetched successfully",
         users
     })
 }
 
-const getUserById = async(req,res) =>{
+const getUserById = async (req, res) => {
     const id = req.params.id;
     const user = await authmodel.findById(id)
-    if(!user){
+    if (!user) {
         return res.status(404).json({
-            message:"User not found"
+            message: "User not found"
         })
     }
     return res.status(200).json({
-        message:"User fetched successfully",
+        message: "User fetched successfully",
         user
     })
 }
 
-const updateUserById = async(req,res) =>{
+const updateUserById = async (req, res) => {
     const id = req.params.id;
-    const {user,password} = req.body;
-    const updatedUser = await authmodel.findByIdAndUpdate(id,{user,password},{new:true});
-    if(!updatedUser){
+    const { user, password } = req.body;
+    const updatedUser = await authmodel.findByIdAndUpdate(id, { user, password }, { new: true });
+    if (!updatedUser) {
         return res.status(404).json({
-            message:"User not found"
+            message: "User not found"
         })
     }
     return res.status(200).json({
-        message:"User updated successfully",
+        message: "User updated successfully",
         updatedUser
     })
 }
 
-const deleteUserById = async(req,res) =>{
-    const id= req.params.id;
+const deleteUserById = async (req, res) => {
+    const id = req.params.id;
     const deletedUser = await authmodel.findByIdAndDelete(id);
-    if(!deletedUser){
+    if (!deletedUser) {
         return res.status(404).json({
-            message:"User not found"
+            message: "User not found"
         })
     }
     return res.status(200).json({
-        message:"User deleted successfully",
+        message: "User deleted successfully",
         deletedUser
     })
 }
 
+const login = async (req, res) => {
+    const { user, password } = req.body;
+    const existingUser = await authmodel.findOne({ user });
+    if (!existingUser) {
+        return res.status(404).json({
+            message: "User not found"
+        })
+    }
+    if (existingUser.password !== password) {
+        return res.status(401).json({
+            message: "Invalid password"
+        })
+    }
+    const token = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+    });
+    return res.status(200).json({
+        message: "User logged in successfully",
+        user: existingUser
+    })
+}
 module.exports = {
     register,
     getAllUsers,
     getUserById,
     updateUserById,
-    deleteUserById
+    deleteUserById,
+    login
 }
