@@ -1,0 +1,9 @@
+Utils kya hote hain?
+
+Utils mein woh general-purpose functions rakhe jaate hain jo:
+
+Baar baar use hote hain.
+Kisi specific module se tightly coupled nahi hote.
+Pure functions ya helper functions hote hain.
+
+iss mein req res se related and crud operations nhi use hosaktay 
