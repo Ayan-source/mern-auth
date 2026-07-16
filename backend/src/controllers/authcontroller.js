@@ -1,16 +1,18 @@
 const authmodel = require("../models/authmodel");
+const usermodel = require("../models/usermodel");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const register = async (req, res) => {
-    const { user, password } = req.body;
-    const existingUser = await authmodel.findOne({ user });
+
+const signup = async (req, res) => {
+    const { firstname, lastname, email, password, DOB, Age, isVerified, Role, CreatedAt, UpdatedAt } = req.body;
+    const existingUser = await usermodel.findOne({ email });
     if (existingUser) {
         return res.status(400).json({
             message: "User already exists"
         })
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newuser = await authmodel.create({
+    const newuser = await usermodel.create({
         user: user,
         password: hashedPassword
     });
@@ -28,6 +30,38 @@ const register = async (req, res) => {
             user: newuser,
         }
     );
+}
+
+const login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const existingUser = await usermodel.findOne({ email });
+        if (!existingUser) {
+            return res.status(404).json({
+                message: "User not found"
+            })
+        }
+        const isPasswordValid = await bcrypt.compare(password, existingUser.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                message: "Invalid password"
+            })
+        }
+        const token = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+        });
+        return res.status(200).json({
+            message: "User logged in successfully",
+            user: existingUser
+        })
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: "Internal server error"
+        })
+    }
 }
 const getAllUsers = async (req, res) => {
     const users = await authmodel.find();
@@ -65,7 +99,6 @@ const updateUserById = async (req, res) => {
         updatedUser
     })
 }
-
 const deleteUserById = async (req, res) => {
     const id = req.params.id;
     const deletedUser = await authmodel.findByIdAndDelete(id);
@@ -80,34 +113,11 @@ const deleteUserById = async (req, res) => {
     })
 }
 
-const login = async (req, res) => {
-    const { user, password } = req.body;
-    const existingUser = await authmodel.findOne({ user });
-    if (!existingUser) {
-        return res.status(404).json({
-            message: "User not found"
-        })
-    }
-    if (existingUser.password !== password) {
-        return res.status(401).json({
-            message: "Invalid password"
-        })
-    }
-    const token = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-    });
-    return res.status(200).json({
-        message: "User logged in successfully",
-        user: existingUser
-    })
-}
 module.exports = {
-    register,
+    signup,
+    login,
     getAllUsers,
     getUserById,
     updateUserById,
-    deleteUserById,
-    login
+    deleteUserById
 }
